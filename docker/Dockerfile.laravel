@@ -7,26 +7,30 @@ RUN apk add --no-cache \
     icu-dev \
     oniguruma-dev \
     linux-headers \
+    libxml2-dev \
     $PHPIZE_DEPS
 
 RUN docker-php-ext-install -j$(nproc) \
     pdo_mysql \
     zip \
     intl \
-    opcache
+    opcache \
+    xml \
+    mbstring
 
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 ENV COMPOSER_ALLOW_SUPERUSER=1
+ENV COMPOSER_MEMORY_LIMIT=-1
 
 WORKDIR /var/www/html
 
 COPY . .
 
-# Установка зависимостей Laravel, если есть composer.json
+# Установка зависимостей Laravel (без dev, без скриптов — скрипты требуют Laravel bootstrap)
 RUN if [ -f composer.json ]; then \
-    composer install --no-dev --no-scripts --prefer-dist; \
-    composer dump-autoload --optimize; \
+    composer install --no-dev --no-scripts --prefer-dist --no-interaction --ignore-platform-reqs; \
+    composer dump-autoload --optimize --no-scripts; \
 fi
 
 RUN chown -R www-data:www-data /var/www/html

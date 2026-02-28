@@ -66,24 +66,34 @@ docker compose run --rm clickhouse-init
 
 Либо выполнить SQL из папки `docker/clickhouse/init/` вручную в клиенте ClickHouse (порт 8123).
 
-### 4. Запуск с Laravel (веб-приложение)
+### 4. Запуск с Laravel (веб-морда: отели, даты, данные из ClickHouse)
 
-Установите Laravel в корень проекта (если ещё не установлен):
+В проекте уже есть Laravel-приложение с таблицей **hotels** и страницей выбора отеля и дат для просмотра доступности и цен из ClickHouse.
+
+1. Установите зависимости и сгенерируйте ключ:
 
 ```bash
-composer create-project laravel/laravel . --no-install
 composer install
 cp .env.example .env
 php artisan key:generate
 ```
 
-Запуск стека с приложением:
+2. Запустите стек с приложением:
 
 ```bash
 docker compose --profile app up -d
 ```
 
-Приложение будет доступно на http://localhost:8080 (или `NGINX_PORT` из `.env`).
+3. Выполните миграции и сидер (таблица `hotels`, демо-отели):
+
+```bash
+docker compose exec laravel php artisan migrate --force
+docker compose exec laravel php artisan db:seed --force
+```
+
+Приложение: **http://localhost:8080** (или `NGINX_PORT` из `.env`).
+
+На главной странице: выберите отель, период (дата с / дата по) и нажмите «Показать». Таблица выведет данные из ClickHouse (таблицы `availability_final` и `prices_by_day_final`) — доступность и цены по дням.
 
 ## Переменные окружения (.env)
 
