@@ -1,0 +1,37 @@
+# Laravel (PHP-FPM) для стека CDC
+FROM php:8.2-fpm-alpine
+
+RUN apk add --no-cache \
+    libzip-dev \
+    libpq-dev \
+    icu-dev \
+    oniguruma-dev \
+    linux-headers \
+    $PHPIZE_DEPS
+
+RUN docker-php-ext-install -j$(nproc) \
+    pdo_mysql \
+    zip \
+    intl \
+    opcache
+
+# Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+ENV COMPOSER_ALLOW_SUPERUSER=1
+
+WORKDIR /var/www/html
+
+COPY . .
+
+# Установка зависимостей Laravel, если есть composer.json
+RUN if [ -f composer.json ]; then \
+    composer install --no-dev --no-scripts --prefer-dist; \
+    composer dump-autoload --optimize; \
+fi
+
+RUN chown -R www-data:www-data /var/www/html
+
+USER www-data
+
+EXPOSE 9000
+CMD ["php-fpm"]

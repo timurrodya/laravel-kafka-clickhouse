@@ -1,0 +1,10 @@
+.git
+.env
+.env.*
+node_modules
+vendor
+*.log
+.dockerignore
+Dockerfile*
+docker-compose*
+.docker

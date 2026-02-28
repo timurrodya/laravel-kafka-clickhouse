@@ -1,0 +1,11 @@
+[mysqld]
+# Debezium CDC
+server-id = 1
+log_bin = mysql-bin
+binlog_format = ROW
+binlog_row_image = FULL
+expire_logs_days = 7
+
+# GTID (опционально, для надёжного позиционирования)
+gtid_mode = ON
+enforce_gtid_consistency = ON
