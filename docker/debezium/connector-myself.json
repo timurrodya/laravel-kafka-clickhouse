@@ -6,16 +6,23 @@
     "database.port": "3306",
     "database.user": "root",
     "database.password": "root",
+    "database.server.id": "184054",
     "database.include.list": "myself",
     "table.include.list": "myself.availability,myself.prices_by_day",
+    "topic.prefix": "myself",
     "database.server.name": "myself",
     "key.converter": "org.apache.kafka.connect.json.JsonConverter",
     "value.converter": "org.apache.kafka.connect.json.JsonConverter",
     "key.converter.schemas.enable": "false",
-    "value.converter.schemas.enable": "false",
-    "transforms": "unwrap",
+    "value.converter.schemas.enable": "true",
+    "transforms": "unwrap,castPrice",
     "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
     "transforms.unwrap.drop.tombstones": "true",
-    "snapshot.mode": "initial"
+    "transforms.castPrice.type": "org.apache.kafka.connect.transforms.Cast$Value",
+    "transforms.castPrice.spec": "price:string",
+    "snapshot.mode": "initial",
+    "schema.history.internal": "io.debezium.storage.kafka.history.KafkaSchemaHistory",
+    "schema.history.internal.kafka.topic": "myself.schema_history",
+    "schema.history.internal.kafka.bootstrap.servers": "kafka:29092"
   }
 }

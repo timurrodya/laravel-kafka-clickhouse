@@ -64,6 +64,7 @@ class ClickHouseService
 
     /**
      * Доступность и цены по отелю за период (финальные таблицы, ReplacingMergeTree).
+     * GROUP BY + argMax убирает дубли (одна дата — одна строка, при двух версиях берётся большая цена).
      */
     public function getAvailabilityAndPrices(int $hotelId, string $dateFrom, string $dateTo): array
     {
@@ -71,9 +72,9 @@ class ClickHouseService
         $query = "
             SELECT
                 a.date AS date,
-                a.available AS available,
-                p.price AS price,
-                p.currency AS currency
+                any(a.available) AS available,
+                argMax(p.price, p.price) AS price,
+                argMax(p.currency, p.price) AS currency
             FROM {$db}.availability_final AS a
             FINAL
             LEFT JOIN {$db}.prices_by_day_final AS p
@@ -82,6 +83,7 @@ class ClickHouseService
             WHERE a.hotel_id = {hotelId:UInt64}
               AND a.date >= '{dateFrom:Date}'
               AND a.date <= '{dateTo:Date}'
+            GROUP BY a.hotel_id, a.date
             ORDER BY a.date
         ";
 

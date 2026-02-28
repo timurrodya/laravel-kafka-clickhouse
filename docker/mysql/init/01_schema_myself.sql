@@ -1,6 +1,16 @@
--- Таблицы для CDC (Debezium) в БД myself
+-- Таблицы для CDC (Debezium) и приложения в БД myself
 CREATE DATABASE IF NOT EXISTS myself;
 USE myself;
+
+-- Справочник отелей (для веб-морды)
+CREATE TABLE IF NOT EXISTS hotels (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    address VARCHAR(255) NULL,
+    city VARCHAR(255) NULL,
+    created_at TIMESTAMP NULL,
+    updated_at TIMESTAMP NULL
+);
 
 CREATE TABLE IF NOT EXISTS availability (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
