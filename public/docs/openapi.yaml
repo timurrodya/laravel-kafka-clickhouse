@@ -1,0 +1,376 @@
+openapi: 3.0.3
+info:
+  title: Availability & Prices API
+  description: |
+    API для отправки данных по доступности и ценам на даты.
+    Данные привязаны к **размещениям** (placements); одна запись на (размещение, дата).
+    Через Debezium → Kafka данные попадают в ClickHouse; при поиске джойн с вариантами (взрослые + возрасты детей) даёт строки по вариантам поиска (вариант B).
+
+    **Одна дата:** укажите `date`.
+    **Диапазон дат:** укажите `date_from` и `date_to` (включительно). Один запрос создаёт/обновляет записи на каждый день в диапазоне (макс. 366 дней).
+  version: 1.0.0
+
+servers:
+  - url: /api
+    description: Текущий хост (относительный путь)
+
+paths:
+  /availability:
+    post:
+      summary: Установить доступность
+      description: |
+        Одна дата — передайте `date`.
+        Диапазон — передайте `date_from` и `date_to`; для каждого дня в диапазоне будет установлено одно значение `available`.
+        Привязка к размещению (`placement_id`).
+      operationId: postAvailability
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AvailabilityInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AvailabilityInput'
+      responses:
+        '201':
+          description: Записи созданы или обновлены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityRangeResponse'
+        '422':
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /prices:
+    post:
+      summary: Установить цену
+      description: |
+        Одна дата — передайте `date`.
+        Диапазон — передайте `date_from` и `date_to`; для каждого дня будет установлена одна и та же `price` и `currency`.
+      operationId: postPrices
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PriceInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PriceInput'
+      responses:
+        '201':
+          description: Записи созданы или обновлены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceRangeResponse'
+        '422':
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+  /search:
+    get:
+      summary: Поиск по составу гостей (и опционально по размещению)
+      description: |
+        Без placement_id — возвращает все отели и размещения с доступными ценами по датам для варианта (adults + children_ages).
+        С placement_id — только выбранное размещение и даты с ценами.
+      operationId: getSearch
+      parameters:
+        - name: placement_id
+          in: query
+          required: false
+          schema:
+            type: integer
+            example: 1
+          description: ID размещения (необязательно; без него — поиск по всем отелям/размещениям)
+        - name: date_from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+            example: "2026-03-01"
+        - name: date_to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+            example: "2026-03-10"
+        - name: adults
+          in: query
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            example: 2
+        - name: children_ages
+          in: query
+          description: Возрасты детей через запятую (например 5,10). В Swagger ввести "5,10" или несколько чисел.
+          schema:
+            type: array
+            items:
+              type: integer
+              minimum: 0
+              maximum: 17
+            example: [5, 10]
+          style: form
+          explode: false
+      responses:
+        '200':
+          description: С placement_id — даты по одному размещению; без — отели, размещения и даты с ценами
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/SearchResponse'
+                  - $ref: '#/components/schemas/SearchResponseHotels'
+        '422':
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+
+components:
+  schemas:
+    AvailabilityInput:
+      type: object
+      description: |
+        Либо одна дата (date), либо диапазон (date_from + date_to). available обязателен всегда.
+      required:
+        - placement_id
+        - available
+      properties:
+        placement_id:
+          type: integer
+          example: 1
+          description: ID размещения из справочника placements
+        date:
+          type: string
+          format: date
+          example: "2026-03-01"
+          description: Одна дата (Y-m-d). Не указывать, если задан диапазон.
+        date_from:
+          type: string
+          format: date
+          example: "2026-03-01"
+          description: Начало диапазона (Y-m-d). Использовать вместе с date_to.
+        date_to:
+          type: string
+          format: date
+          example: "2026-03-10"
+          description: Конец диапазона (Y-m-d), включительно. Макс. 366 дней.
+        available:
+          type: boolean
+          example: true
+          description: Доступен ли номер (true/false или 1/0)
+
+    AvailabilityRangeResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: ok
+        data:
+          type: object
+          properties:
+            placement_id:
+              type: integer
+            count:
+              type: integer
+              description: Количество обновлённых/созданных записей
+            dates:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  date:
+                    type: string
+                    format: date
+                  available:
+                    type: boolean
+
+    PriceInput:
+      type: object
+      description: |
+        Либо одна дата (date), либо диапазон (date_from + date_to). price обязателен всегда.
+      required:
+        - placement_id
+        - price
+      properties:
+        placement_id:
+          type: integer
+          example: 1
+          description: ID размещения
+        date:
+          type: string
+          format: date
+          example: "2026-03-01"
+          description: Одна дата. Не указывать, если задан диапазон.
+        date_from:
+          type: string
+          format: date
+          example: "2026-03-01"
+          description: Начало диапазона. Использовать вместе с date_to.
+        date_to:
+          type: string
+          format: date
+          example: "2026-03-10"
+          description: Конец диапазона, включительно. Макс. 366 дней.
+        price:
+          type: number
+          format: float
+          minimum: 0
+          example: 5500.00
+        currency:
+          type: string
+          maxLength: 3
+          default: RUB
+          example: RUB
+
+    PriceRangeResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: ok
+        data:
+          type: object
+          properties:
+            placement_id:
+              type: integer
+            count:
+              type: integer
+              description: Количество обновлённых/созданных записей
+            dates:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  date:
+                    type: string
+                    format: date
+                  price:
+                    type: number
+                  currency:
+                    type: string
+
+    SearchResponse:
+      type: object
+      description: Ответ при указании placement_id — одно размещение и даты.
+      properties:
+        data:
+          type: object
+          properties:
+            placement_id:
+              type: integer
+            adults:
+              type: integer
+            children_ages:
+              type: array
+              items:
+                type: integer
+            date_from:
+              type: string
+              format: date
+            date_to:
+              type: string
+              format: date
+            dates:
+              type: array
+              items:
+                type: object
+                properties:
+                  date:
+                    type: string
+                    format: date
+                  available:
+                    type: boolean
+                  price:
+                    type: number
+                    nullable: true
+                  currency:
+                    type: string
+                    nullable: true
+
+    SearchResponseHotels:
+      type: object
+      description: Ответ без placement_id — отели, размещения и даты с ценами.
+      properties:
+        data:
+          type: object
+          properties:
+            adults:
+              type: integer
+            children_ages:
+              type: array
+              items:
+                type: integer
+            date_from:
+              type: string
+              format: date
+            date_to:
+              type: string
+              format: date
+            hotels:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  city:
+                    type: string
+                    nullable: true
+                  placements:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        name:
+                          type: string
+                        dates:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              date:
+                                type: string
+                                format: date
+                              available:
+                                type: boolean
+                              price:
+                                type: number
+                                nullable: true
+                              currency:
+                                type: string
+                                nullable: true
+
+    ValidationError:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string

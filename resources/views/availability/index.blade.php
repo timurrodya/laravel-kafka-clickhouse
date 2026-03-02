@@ -8,10 +8,19 @@
         <div class="form-row">
             <div class="form-group">
                 <label for="hotel_id">Отель</label>
-                <select name="hotel_id" id="hotel_id" required>
+                <select name="hotel_id" id="hotel_id">
                     <option value="">— Выберите отель —</option>
                     @foreach($hotels as $h)
                         <option value="{{ $h->id }}" @selected($h->id == $hotelId)>{{ $h->name }} @if($h->city)({{ $h->city }})@endif</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="placement_id">Размещение</label>
+                <select name="placement_id" id="placement_id" required>
+                    <option value="">— Сначала выберите отель —</option>
+                    @foreach($placements as $pl)
+                        <option value="{{ $pl->id }}" data-hotel-id="{{ $pl->hotel_id }}" @selected($pl->id == $placementId)>{{ $pl->hotel->name }} — {{ $pl->name }}</option>
                     @endforeach
                 </select>
             </div>
@@ -30,11 +39,26 @@
     </form>
 </div>
 
+<script>
+document.getElementById('hotel_id').addEventListener('change', function() {
+    var hid = this.value;
+    var sel = document.getElementById('placement_id');
+    for (var i = 0; i < sel.options.length; i++) {
+        var opt = sel.options[i];
+        if (opt.value === '') { opt.style.display = 'block'; opt.disabled = !hid; continue; }
+        opt.style.display = (!hid || opt.dataset.hotelId === hid) ? 'block' : 'none';
+        opt.disabled = hid && opt.dataset.hotelId !== hid;
+    }
+    if (!hid) sel.value = '';
+});
+document.getElementById('hotel_id').dispatchEvent(new Event('change'));
+</script>
+
 @if($error)
     <div class="alert alert-error">{{ $error }}</div>
 @endif
 
-@if($hotelId > 0 && !$error)
+@if($placementId > 0 && !$error)
     <div class="card">
         <h2 style="margin:0 0 1rem; font-size:1.1rem;">Доступность и цены (данные из ClickHouse)</h2>
         @if(count($rows) === 0)

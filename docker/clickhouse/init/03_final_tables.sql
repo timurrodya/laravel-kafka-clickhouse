@@ -1,21 +1,32 @@
 -- Финальные таблицы с ReplacingMergeTree (последнее состояние по ключу)
 
--- Итоговая доступность по отелю и дате (последнее значение по updated_at)
+-- Справочник вариантов поиска: размещение + взрослые + возрасты детей (джойн при чтении)
+CREATE TABLE IF NOT EXISTS analytics.placement_variants
+(
+    placement_id UInt64,
+    adults UInt8,
+    children_ages String,
+    updated_at DateTime64(3)
+)
+ENGINE = ReplacingMergeTree(updated_at)
+ORDER BY (placement_id, adults, children_ages);
+
+-- Итоговая доступность по размещению и дате (последнее значение по updated_at)
 CREATE TABLE IF NOT EXISTS analytics.availability_final
 (
-    hotel_id UInt64,
+    placement_id UInt64,
     date Date,
     available UInt8,
     updated_at DateTime64(3),
     _version UInt64 MATERIALIZED toUnixTimestamp64Milli(updated_at)
 )
 ENGINE = ReplacingMergeTree(_version)
-ORDER BY (hotel_id, date);
+ORDER BY (placement_id, date);
 
--- Итоговые цены по отелю и дате
+-- Итоговые цены по размещению и дате
 CREATE TABLE IF NOT EXISTS analytics.prices_by_day_final
 (
-    hotel_id UInt64,
+    placement_id UInt64,
     date Date,
     price Decimal(12, 2),
     currency String,
@@ -23,4 +34,4 @@ CREATE TABLE IF NOT EXISTS analytics.prices_by_day_final
     _version UInt64 MATERIALIZED toUnixTimestamp64Milli(updated_at)
 )
 ENGINE = ReplacingMergeTree(_version)
-ORDER BY (hotel_id, date);
+ORDER BY (placement_id, date);

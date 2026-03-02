@@ -8,7 +8,7 @@
     "database.password": "root",
     "database.server.id": "184054",
     "database.include.list": "myself",
-    "table.include.list": "myself.availability,myself.prices_by_day",
+    "table.include.list": "myself.availability,myself.prices_by_day,myself.placement_variants",
     "topic.prefix": "myself",
     "database.server.name": "myself",
     "key.converter": "org.apache.kafka.connect.json.JsonConverter",

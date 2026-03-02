@@ -7,13 +7,23 @@ use Illuminate\Database\Seeder;
 
 class HotelSeeder extends Seeder
 {
+    /**
+     * 3 отеля для демо.
+     */
     public function run(): void
     {
-        $hotels = [
-            ['name' => 'Отель Центральный', 'city' => 'Москва', 'address' => 'ул. Тверская, 1'],
-            ['name' => 'Гранд Отель', 'city' => 'Санкт-Петербург', 'address' => 'Невский пр., 10'],
-            ['name' => 'Морской Бриз', 'city' => 'Сочи', 'address' => 'ул. Курортная, 5'],
+        $cities = [
+            'Москва', 'Санкт-Петербург', 'Сочи',
         ];
+
+        $hotels = [];
+        for ($i = 1; $i <= 100; $i++) {
+            $hotels[] = [
+                'name' => 'Отель ' . $i,
+                'city' => $cities[rand(0, count($cities)-1)],
+                'address' => 'ул. Демо, ' . $i,
+            ];
+        }
 
         foreach ($hotels as $h) {
             Hotel::firstOrCreate(

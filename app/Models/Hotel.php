@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Hotel extends Model
 {
@@ -15,4 +16,9 @@ class Hotel extends Model
     ];
 
     protected $casts = [];
+
+    public function placements(): HasMany
+    {
+        return $this->hasMany(Placement::class, 'hotel_id');
+    }
 }
